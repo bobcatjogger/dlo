@@ -7,12 +7,13 @@ from pathlib import Path
 
 from dlo.crawl import (
     AUDIT_ALGORITHM_VERSION,
+    _root_slug,
+    _rotate_audit_reports,
     build_audit_report_name,
     crawl_directory,
     format_file_size,
     get_proposed_name,
-    _rotate_audit_reports,
-    _root_slug,
+    hash_file_content,
 )
 
 
@@ -73,6 +74,17 @@ def test_crawl_directory_indexes_and_writes_report(tmp_path: Path, monkeypatch) 
     assert report["algorithm_version"] == AUDIT_ALGORITHM_VERSION
     assert len(report["proposed_changes"]) == 1
     assert report["proposed_changes"][0]["file_size"] == "<1MB"
+    assert report["proposed_changes"][0]["content_hash"] is not None
+
+
+def test_hash_file_content(tmp_path: Path) -> None:
+    file_a = tmp_path / "a.txt"
+    file_b = tmp_path / "b.txt"
+    file_a.write_text("same", encoding="utf-8")
+    file_b.write_text("same", encoding="utf-8")
+
+    assert hash_file_content(file_a) == hash_file_content(file_b)
+    assert hash_file_content(file_a) != hash_file_content(tmp_path / "missing.txt")
 
 
 def test_crawl_skips_bundle_internals(tmp_path: Path, monkeypatch) -> None:
@@ -114,10 +126,8 @@ def test_rotate_audit_reports_keeps_last_three(tmp_path: Path) -> None:
     root = Path("/Volumes/staged_ext")
     slug = _root_slug(root)
     for index in range(5):
-        (tmp_path / f"audit_{slug}_2026052{index}T120000Z_v{AUDIT_ALGORITHM_VERSION}.json").write_text(
-            "{}",
-            encoding="utf-8",
-        )
+        report_name = f"audit_{slug}_2026052{index}T120000Z_v{AUDIT_ALGORITHM_VERSION}.json"
+        (tmp_path / report_name).write_text("{}", encoding="utf-8")
 
     _rotate_audit_reports(tmp_path, root)
 

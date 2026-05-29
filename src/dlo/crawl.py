@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import mimetypes
 import os
@@ -14,22 +15,84 @@ from dlo.config import data_dir
 from dlo.db import get_engine, session_scope
 from dlo.models import Base, FileRecord
 
-MEDIA_EXTENSIONS = frozenset({
-    ".jpg", ".jpeg", ".png", ".mp4", ".mov", ".avi", ".mkv", ".webm", ".gif",
-    ".bmp", ".tiff", ".ico", ".webp", ".svg", ".eps", ".raw", ".heic", ".heif",
-})
-DOCUMENT_EXTENSIONS = frozenset({
-    ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".odt",
-    ".ods", ".odp", ".odg", ".odf",
-})
-NOTE_EXTENSIONS = frozenset({
-    ".md", ".txt", ".org", ".json", ".yaml", ".yml", ".toml", ".ini", ".conf", ".cfg",
-    ".properties", ".env", ".env.local", ".env.development", ".env.production",
-})
-ARCHIVE_EXTENSIONS = frozenset({
-    ".zip", ".tar", ".gz", ".bz2", ".rar", ".7z", ".iso", ".dmg", ".pkg",
-    ".deb", ".rpm", ".msi", ".exe", ".appx", ".appxbundle", ".appxupload", ".appxuploadbundle",
-})
+MEDIA_EXTENSIONS = frozenset(
+    {
+        ".jpg",
+        ".jpeg",
+        ".png",
+        ".mp4",
+        ".mov",
+        ".avi",
+        ".mkv",
+        ".webm",
+        ".gif",
+        ".bmp",
+        ".tiff",
+        ".ico",
+        ".webp",
+        ".svg",
+        ".eps",
+        ".raw",
+        ".heic",
+        ".heif",
+    }
+)
+DOCUMENT_EXTENSIONS = frozenset(
+    {
+        ".pdf",
+        ".doc",
+        ".docx",
+        ".xls",
+        ".xlsx",
+        ".ppt",
+        ".pptx",
+        ".odt",
+        ".ods",
+        ".odp",
+        ".odg",
+        ".odf",
+    }
+)
+NOTE_EXTENSIONS = frozenset(
+    {
+        ".md",
+        ".txt",
+        ".org",
+        ".json",
+        ".yaml",
+        ".yml",
+        ".toml",
+        ".ini",
+        ".conf",
+        ".cfg",
+        ".properties",
+        ".env",
+        ".env.local",
+        ".env.development",
+        ".env.production",
+    }
+)
+ARCHIVE_EXTENSIONS = frozenset(
+    {
+        ".zip",
+        ".tar",
+        ".gz",
+        ".bz2",
+        ".rar",
+        ".7z",
+        ".iso",
+        ".dmg",
+        ".pkg",
+        ".deb",
+        ".rpm",
+        ".msi",
+        ".exe",
+        ".appx",
+        ".appxbundle",
+        ".appxupload",
+        ".appxuploadbundle",
+    }
+)
 FILE_CATEGORY_SUFFIXES: tuple[tuple[frozenset[str], str], ...] = (
     (MEDIA_EXTENSIONS, "media"),
     (DOCUMENT_EXTENSIONS, "doc"),
@@ -37,14 +100,33 @@ FILE_CATEGORY_SUFFIXES: tuple[tuple[frozenset[str], str], ...] = (
     (ARCHIVE_EXTENSIONS, "archive"),
 )
 # Directory bundles: index the container once, never rename or crawl inside.
-BUNDLE_SUFFIXES = frozenset({
-    ".app", ".framework", ".bundle", ".plugin", ".kext", ".xcodeproj", ".xcworkspace",
-    ".xcarchive", ".playground", ".photoslibrary", ".mlpackage",
-})
-SKIP_DIR_NAMES = frozenset({
-    ".git", ".svn", ".hg", "__pycache__", "node_modules", "venv", ".venv",
-})
-AUDIT_ALGORITHM_VERSION = "3"
+BUNDLE_SUFFIXES = frozenset(
+    {
+        ".app",
+        ".framework",
+        ".bundle",
+        ".plugin",
+        ".kext",
+        ".xcodeproj",
+        ".xcworkspace",
+        ".xcarchive",
+        ".playground",
+        ".photoslibrary",
+        ".mlpackage",
+    }
+)
+SKIP_DIR_NAMES = frozenset(
+    {
+        ".git",
+        ".svn",
+        ".hg",
+        "__pycache__",
+        "node_modules",
+        "venv",
+        ".venv",
+    }
+)
+AUDIT_ALGORITHM_VERSION = "4"
 AUDIT_REPORT_RETENTION = 3
 _SIZE_MB = 1024 * 1024
 _SIZE_GB = 1024 * 1024 * 1024
@@ -57,6 +139,20 @@ def format_file_size(size_bytes: int) -> str:
     if size_bytes < _SIZE_GB:
         return f"{size_bytes / _SIZE_MB:.1f}MB"
     return f"{size_bytes / _SIZE_GB:.1f}GB"
+
+
+def hash_file_content(filepath: Path) -> str | None:
+    """Return a SHA-256 hex digest for a regular file, or None if unreadable."""
+    if not filepath.is_file():
+        return None
+    digest = hashlib.sha256()
+    try:
+        with filepath.open("rb") as handle:
+            for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                digest.update(chunk)
+    except OSError:
+        return None
+    return digest.hexdigest()
 
 
 def get_proposed_name(filepath: Path, *, mtime: datetime | None = None) -> str:
@@ -147,6 +243,7 @@ def _index_path(
     mtime = datetime.fromtimestamp(stat.st_mtime, tz=UTC)
     proposed_name = get_proposed_name(full_path, mtime=mtime)
     mime_type, _ = mimetypes.guess_type(full_path.name)
+    content_hash = hash_file_content(full_path)
     path_str = str(full_path)
 
     record = session.scalar(select(FileRecord).where(FileRecord.path == path_str))
@@ -157,6 +254,7 @@ def _index_path(
     record.size_bytes = stat.st_size
     record.mtime = mtime
     record.mime_type = mime_type
+    record.content_hash = content_hash
     record.scanned_at = scanned_at
     record.extra = json.dumps({"proposed_filename": proposed_name})
 
@@ -165,6 +263,7 @@ def _index_path(
             "original_path": path_str,
             "proposed_filename": proposed_name,
             "file_size": format_file_size(stat.st_size),
+            "content_hash": content_hash,
         }
     )
 
