@@ -44,7 +44,19 @@ BUNDLE_SUFFIXES = frozenset({
 SKIP_DIR_NAMES = frozenset({
     ".git", ".svn", ".hg", "__pycache__", "node_modules", "venv", ".venv",
 })
-AUDIT_REPORT_NAME = "digital_life_audit_report.json"
+AUDIT_ALGORITHM_VERSION = "3"
+AUDIT_REPORT_RETENTION = 3
+_SIZE_MB = 1024 * 1024
+_SIZE_GB = 1024 * 1024 * 1024
+
+
+def format_file_size(size_bytes: int) -> str:
+    """Return a compact human-readable file size for audit reports."""
+    if size_bytes < _SIZE_MB:
+        return "<1MB"
+    if size_bytes < _SIZE_GB:
+        return f"{size_bytes / _SIZE_MB:.1f}MB"
+    return f"{size_bytes / _SIZE_GB:.1f}GB"
 
 
 def get_proposed_name(filepath: Path, *, mtime: datetime | None = None) -> str:
@@ -78,6 +90,49 @@ def _prune_walk_dirs(dirs: list[str]) -> list[str]:
     return bundles
 
 
+def _root_slug(root: Path) -> str:
+    """Filesystem-safe identifier for a crawl root path."""
+    parts = root.resolve().parts
+    slug = "-".join(part for part in parts if part != "/")
+    return "".join(char if char.isalnum() or char in "-_" else "_" for char in slug) or "root"
+
+
+def build_audit_report_name(root: Path, scanned_at: datetime) -> str:
+    """Return a unique audit report filename for *root* at *scanned_at*."""
+    timestamp = scanned_at.strftime("%Y%m%dT%H%M%SZ")
+    return f"audit_{_root_slug(root)}_{timestamp}_v{AUDIT_ALGORITHM_VERSION}.json"
+
+
+def _rotate_audit_reports(report_dir: Path, root: Path) -> None:
+    """Keep only the newest ``AUDIT_REPORT_RETENTION`` reports for *root*."""
+    pattern = f"audit_{_root_slug(root)}_*_v{AUDIT_ALGORITHM_VERSION}.json"
+    reports = sorted(report_dir.glob(pattern), key=lambda path: path.name, reverse=True)
+    for stale_report in reports[AUDIT_REPORT_RETENTION:]:
+        stale_report.unlink(missing_ok=True)
+
+
+def _write_audit_report(
+    root: Path,
+    scanned_at: datetime,
+    *,
+    dry_run: bool,
+    proposed_changes: list[dict[str, object]],
+) -> Path:
+    report_dir = data_dir()
+    report_path = report_dir / build_audit_report_name(root, scanned_at)
+    payload = {
+        "audit_timestamp": scanned_at.isoformat(),
+        "algorithm_version": AUDIT_ALGORITHM_VERSION,
+        "root": str(root),
+        "dry_run": dry_run,
+        "total_files_scanned": len(proposed_changes),
+        "proposed_changes": proposed_changes,
+    }
+    report_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    _rotate_audit_reports(report_dir, root)
+    return report_path
+
+
 def _index_path(
     session: Session,
     full_path: Path,
@@ -109,7 +164,7 @@ def _index_path(
         {
             "original_path": path_str,
             "proposed_filename": proposed_name,
-            "file_size_bytes": stat.st_size,
+            "file_size": format_file_size(stat.st_size),
         }
     )
 
@@ -152,14 +207,11 @@ def crawl_directory(
 
     report_path: Path | None = None
     if write_report:
-        report_path = data_dir() / AUDIT_REPORT_NAME
-        payload = {
-            "audit_timestamp": scanned_at.isoformat(),
-            "root": str(root),
-            "dry_run": dry_run,
-            "total_files_scanned": len(proposed_changes),
-            "proposed_changes": proposed_changes,
-        }
-        report_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+        report_path = _write_audit_report(
+            root,
+            scanned_at,
+            dry_run=dry_run,
+            proposed_changes=proposed_changes,
+        )
 
     return CrawlResult(files_scanned=len(proposed_changes), report_path=report_path)
