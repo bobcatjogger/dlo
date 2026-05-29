@@ -20,7 +20,7 @@ from dlo.crawl import (
 def test_format_file_size() -> None:
     one_mb = 1024 * 1024
     one_gb = 1024 * 1024 * 1024
-    assert format_file_size(0) == "<1MB"
+    assert format_file_size(0) == "empty"
     assert format_file_size(512_000) == "<1MB"
     assert format_file_size(one_mb) == "1.0MB"
     assert format_file_size(int(2.5 * one_mb)) == "2.5MB"

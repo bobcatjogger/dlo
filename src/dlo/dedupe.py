@@ -65,6 +65,7 @@ def _load_records(
         records = [record for record in records if record.path.startswith(prefix)]
     if min_size_bytes > 0:
         records = [record for record in records if (record.size_bytes or 0) >= min_size_bytes]
+    records = [record for record in records if (record.size_bytes or 0) > 0]
     return records
 
 

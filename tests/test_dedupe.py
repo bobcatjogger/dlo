@@ -199,3 +199,37 @@ def test_run_dedupe_persists_hash_groups_and_writes_report(tmp_path: Path, monke
         db_groups = list(session.scalars(select(DuplicateGroup)).all())
         assert len(db_groups) == 1
         assert db_groups[0].content_hash == "abc123"
+
+
+def test_dedupe_excludes_empty_files(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("DLO_DATA_DIR", str(tmp_path))
+    import dlo.db as db_module
+
+    db_module._engine = None
+    db_module._SessionLocal = None
+    Base.metadata.create_all(get_engine())
+
+    with session_scope() as session:
+        _seed(
+            session,
+            [
+                _make_record(
+                    "/staging/a/empty.bin",
+                    size_bytes=0,
+                    mime_type="application/octet-stream",
+                    content_hash="e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                ),
+                _make_record(
+                    "/staging/b/empty.bin",
+                    size_bytes=0,
+                    mime_type="application/octet-stream",
+                    content_hash="e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                ),
+            ],
+        )
+
+    with session_scope() as session:
+        groups = find_duplicates(session)
+
+    assert groups["same_hash"] == []
+    assert groups["same_name"] == []

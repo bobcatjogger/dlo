@@ -11,8 +11,19 @@
       "source.organizeImports": "explicit"
     }
   },
+  "[json]": {
+    "editor.defaultFormatter": "vscode.json-language-features",
+    "editor.formatOnSave": true,
+    "editor.wordWrap": "off"
+  },
+  "[markdown]": {
+    "editor.wordWrap": "on"
+  },
   "files.associations": {
-    "*.zsh": "shellscript"
+    "*.zsh": "shellscript",
+    "digital_life_audit_report.json": "json",
+    "audit_*.json": "json",
+    "dedupe_*.json": "json"
   },
   "terminal.integrated.defaultProfile.osx": "zsh",
   "shellcheck.enable": true,

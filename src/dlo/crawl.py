@@ -126,7 +126,7 @@ SKIP_DIR_NAMES = frozenset(
         ".venv",
     }
 )
-AUDIT_ALGORITHM_VERSION = "4"
+AUDIT_ALGORITHM_VERSION = "5"
 AUDIT_REPORT_RETENTION = 3
 _SIZE_MB = 1024 * 1024
 _SIZE_GB = 1024 * 1024 * 1024
@@ -134,6 +134,8 @@ _SIZE_GB = 1024 * 1024 * 1024
 
 def format_file_size(size_bytes: int) -> str:
     """Return a compact human-readable file size for audit reports."""
+    if size_bytes == 0:
+        return "empty"
     if size_bytes < _SIZE_MB:
         return "<1MB"
     if size_bytes < _SIZE_GB:
