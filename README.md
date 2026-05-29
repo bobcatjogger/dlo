@@ -1,6 +1,8 @@
-# codez
+# dlo — Digital Life Organizer
 
 Tools to crawl your filesystem, store metadata, and surface duplicates for archive or deletion.
+
+Part of the [codez](../) workspace.
 
 ## Stack
 
@@ -8,29 +10,30 @@ Tools to crawl your filesystem, store metadata, and surface duplicates for archi
 |-------|--------|
 | Python | 3.11+, CLI via Click, SQLAlchemy models |
 | Shell | zsh scripts in `scripts/zsh/` |
-| Database | **SQLite** by default (`data/codez.db`) — no server, portable, ideal for local indexing. Set `CODEZ_DATABASE_URL` to Postgres when you need multi-machine sync. |
+| Database | **SQLite** by default (`data/dlo.db`) — no server, portable, ideal for local indexing. Set `DLO_DATABASE_URL` to Postgres when you need multi-machine sync. |
 | Migrations | Alembic |
 
 ## Quick start
 
 ```bash
-# One-time setup
-python3 -m venv .venv
+cd ~/codez/dlo
+python3.13 -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev]"
 
 cp .env.example .env
 ./scripts/zsh/init-db.zsh
 
-# CLI
-codez status
-codez init-db
+dlo status
+dlo init-db
 ```
+
+Or: `make install` then `make db-init`.
 
 ## Layout
 
 ```
-src/codez/          Python package (models, db, CLI)
+src/dlo/            Python package (models, db, CLI)
 scripts/zsh/        zsh entrypoints and shared helpers
 alembic/            schema migrations
 tests/              pytest
@@ -41,19 +44,13 @@ data/               local DB and artifacts (gitignored)
 
 | Variable | Default |
 |----------|---------|
-| `CODEZ_DATA_DIR` | `./data` |
-| `CODEZ_DATABASE_URL` | `sqlite:///<data>/codez.db` |
+| `DLO_DATA_DIR` | `./data` |
+| `DLO_DATABASE_URL` | `sqlite:///<data>/dlo.db` |
 
 ## Development
 
 ```bash
-make test      # pytest
-make lint      # ruff
-make format    # ruff format
+make test
+make lint
+make format
 ```
-
-## Next steps
-
-- Crawl scripts that walk paths and upsert `FileRecord` rows
-- Hashing pass to populate `content_hash` and `DuplicateGroup`
-- Review workflow (pending → archived / deleted)

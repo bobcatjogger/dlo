@@ -5,16 +5,16 @@ from rich.console import Console
 from rich.table import Table
 from sqlalchemy import select
 
-from codez.config import data_dir, database_url
-from codez.db import get_engine, session_scope
-from codez.models import Base, FileRecord
+from dlo.config import data_dir, database_url
+from dlo.db import get_engine, session_scope
+from dlo.models import Base, FileRecord
 
 console = Console()
 
 
 @click.group()
 def main() -> None:
-    """Organize your digital life: crawl, metadata, duplicates."""
+    """Digital Life Organizer: crawl, metadata, duplicates."""
 
 
 @main.command()
