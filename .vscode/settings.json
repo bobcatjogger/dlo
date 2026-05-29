@@ -15,11 +15,10 @@
     "*.zsh": "shellscript"
   },
   "terminal.integrated.defaultProfile.osx": "zsh",
-  "shellformat.path": "${workspaceFolder}/.venv/bin/ruff",
   "shellcheck.enable": true,
   "shellcheck.run": "onSave",
   "shellcheck.executablePath": "shellcheck",
   "terminal.integrated.env.osx": {
-    "CODEZ_ROOT": "${workspaceFolder}"
+    "DLO_ROOT": "${workspaceFolder}"
   }
 }

@@ -7,7 +7,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from codez.config import database_url
+from dlo.config import database_url
 
 _engine: Engine | None = None
 _SessionLocal: sessionmaker[Session] | None = None

@@ -24,4 +24,4 @@ typecheck:
 	$(VENV)/mypy
 
 db-init:
-	$(PY) -m codez init-db
+	$(PY) -m dlo init-db

@@ -7,7 +7,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
 def data_dir() -> Path:
-    raw = os.environ.get("CODEZ_DATA_DIR", str(PROJECT_ROOT / "data"))
+    raw = os.environ.get("DLO_DATA_DIR", str(PROJECT_ROOT / "data"))
     path = Path(raw).expanduser()
     if not path.is_absolute():
         path = (PROJECT_ROOT / path).resolve()
@@ -16,8 +16,8 @@ def data_dir() -> Path:
 
 
 def database_url() -> str:
-    explicit = os.environ.get("CODEZ_DATABASE_URL")
+    explicit = os.environ.get("DLO_DATABASE_URL")
     if explicit:
         return explicit
-    db_path = data_dir() / "codez.db"
+    db_path = data_dir() / "dlo.db"
     return f"sqlite:///{db_path}"
