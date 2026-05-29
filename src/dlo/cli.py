@@ -60,8 +60,7 @@ def status(limit: int) -> None:
     console.print(f"Database: [cyan]{database_url()}[/cyan]")
 
     with session_scope() as session:
-        stmt = select(FileRecord).order_by(FileRecord.scanned_at.desc()).limit(limit)
-        rows = session.scalars(stmt).all()
+        rows = session.scalars(select(FileRecord).order_by(FileRecord.scanned_at.desc()).limit(limit)).all()
 
     if not rows:
         console.print("[dim]No files indexed yet. Run crawl scripts to populate.[/dim]")
